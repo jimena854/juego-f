@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CyberQuiz 2077 - Ad Version</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --cyber-yellow: #fcee0a;
+            --cyber-blue: #00f3ff;
+            --cyber-red: #ff003c;
+            --cyber-black: #050505;
+            --glass: rgba(10, 10, 10, 0.95);
+            /* Altura reservada para banner inferior si decides poner uno */
+            --ad-height: 50px; 
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Rajdhani', sans-serif;
+            background-color: var(--cyber-black);
+            color: var(--cyber-yellow);
+            height: 100dvh; 
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background-image: 
+                linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* --- CRT Scanlines --- */
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        h1, h2, h3 { font-family: 'Orbitron', sans-serif; margin: 0; line-height: 1.1; }
+        
+        /* --- Layout Containers --- */
+        .screen {
+            display: none;
+            flex-direction: column;
+            /* Dejamos espacio abajo para que no se corte nada */
+            height: calc(100dvh - var(--ad-height)); 
+            width: 100%;
+            padding: 10px 15px;
+            opacity: 0;
+            transition: opacity 0.5s;
+            justify-content: space-between;
+        }
+        .screen.active { display: flex; opacity: 1; }
+
+        /* --- UI Elements --- */
+        .cyber-box {
+            border: 2px solid var(--cyber-yellow);
+            background: var(--glass);
+            padding: 12px;
+            clip-path: polygon(0 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%);
+            position: relative;
+        }
+
+        .question-box {
+            flex-shrink: 0;
+            max-height: 25vh; 
+            overflow-y: auto;
+            margin-bottom: 5px;
+            font-size: 1.1rem;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #options-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 10px;
+            flex-grow: 1;
+            max-height: 40vh;
+            margin: 5px 0;
+        }
+
+        .btn {
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            cursor: pointer;
+            position: relative;
+            border: none;
+            outline: none;
+        }
+
+        .btn-opt {
+            background: rgba(0, 243, 255, 0.1); 
+            border: 1px solid var(--cyber-blue); 
+            color: #fff; 
+            font-size: 0.85rem;
+            padding: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+            transition: all 0.1s;
+            height: 100%;
+            width: 100%;
+        }
+        
+        .btn-opt:active { transform: scale(0.95); background: var(--cyber-blue); color: #000; }
+        .btn-opt.correct { background: var(--cyber-yellow); color: #000; border-color: var(--cyber-yellow); box-shadow: 0 0 15px var(--cyber-yellow); }
+        .btn-opt.wrong { background: var(--cyber-red); border-color: var(--cyber-red); opacity: 0.6; }
+
+        .header-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--cyber-blue);
+            padding-bottom: 5px;
+            border-bottom: 1px solid #333;
+            margin-bottom: 5px;
+        }
+
+        .status-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+        .progress-bar {
+            flex-grow: 1;
+            height: 4px;
+            background: #222;
+        }
+        .progress-fill {
+            height: 100%; background: var(--cyber-yellow); width: 0%; transition: width 0.3s;
+            box-shadow: 0 0 8px var(--cyber-yellow);
+        }
+        .timer-circle {
+            width: 35px; height: 35px;
+            border: 2px solid var(--cyber-red);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: var(--cyber-red);
+            font-size: 1rem;
+            box-shadow: 0 0 5px var(--cyber-red);
+        }
+
+        .lifelines {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            height: 50px;
+            margin-top: 5px;
+        }
+        .lifeline-btn {
+            flex: 1;
+            background: #111;
+            border: 1px solid var(--cyber-yellow);
+            color: var(--cyber-yellow);
+            clip-path: polygon(0 0, 100% 0, 90% 100%, 10% 100%);
+            font-size: 0.7rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+        .lifeline-btn:disabled { opacity: 0.2; border-color: #444; color: #444; }
+
+        .center-content {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            flex-grow: 1;
+            text-align: center;
+            gap: 20px;
+        }
+        .btn-main {
+            background: var(--cyber-yellow); color: #000; 
+            padding: 15px; width: 100%; font-weight: 900; font-size: 1.2rem;
+            clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+        }
+        .btn-whatsapp {
+            background: #25D366; color: #fff;
+            padding: 12px; width: 100%; font-size: 1rem;
+            margin-bottom: 10px;
+            clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+        }
+
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 100;
+            display: none; align-items: center; justify-content: center; padding: 20px;
+        }
+        
+        /* --- Contenedor Inferior --- */
+        .ad-container-bottom {
+            position: fixed;
+            bottom: 0; left: 0;
+            width: 100%;
+            height: var(--ad-height);
+            background-color: #000;
+            border-top: 1px solid var(--cyber-yellow);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        .ad-placeholder {
+            color: #444;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            animation: pulse-ad 2s infinite;
+        }
+        
+        @keyframes pulse-ad { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+
+        .glitch { animation: glitch-anim 2s infinite alternate; }
+        @keyframes glitch-anim { 0% { text-shadow: 2px 0 red; } 100% { text-shadow: -2px 0 blue; } }
+
+    </style>
+</head>
+<body>
+
+    <div class="scanlines"></div>
+
+    <!-- PANTALLA INICIO -->
+    <div id="start-screen" class="screen active">
+        <div class="center-content">
+            <h1 class="glitch" style="font-size: 2.8rem; color: var(--cyber-yellow); line-height:1;">CYBER<br>QUIZ</h1>
+            <p style="color: var(--cyber-blue); margin-top: -10px; letter-spacing: 3px;">2077 EDITION</p>
+            
+            <div class="cyber-box" style="width: 100%; text-align: left; font-size: 0.9rem;">
+                <p>> Inicializando protocolo...</p>
+                <p>> Objetivo: Demostrar conocimiento.</p>
+                <p>> Recompensa: Estatus Legendario.</p>
+            </div>
+        </div>
+        <button class="btn btn-main" onclick="game.start()">CONECTAR</button>
+    </div>
+
+    <!-- PANTALLA JUEGO -->
+    <div id="game-screen" class="screen">
+        
+        <!-- Header (Stats) -->
+        <div>
+            <div class="header-stats">
+                <span id="score-display">SCORE: 0</span>
+                <span id="streak-display" style="color: var(--cyber-red)">RACHA: 0</span>
+            </div>
+            <!-- Barra y Tiempo -->
+            <div class="status-area">
+                <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+                <div class="timer-circle" id="timer">30</div>
+            </div>
+        </div>
+
+        <!-- Pregunta -->
+        <div class="cyber-box question-box">
+            <h3 id="question-text">Cargando datos neuronales...</h3>
+        </div>
+
+        <!-- Opciones -->
+        <div id="options-container">
+            <!-- Generado por JS -->
+        </div>
+
+        <!-- Poderes -->
+        <div class="lifelines">
+            <button class="btn lifeline-btn" id="btn-5050" onclick="game.use5050()">
+                <span>50/50</span><small id="count-5050">x3</small>
+            </button>
+            <button class="btn lifeline-btn" id="btn-skip" onclick="game.useSkip()">
+                <span>HACK</span><small id="count-skip">x1</small>
+            </button>
+            <button class="btn lifeline-btn" id="btn-time" onclick="game.useTime()">
+                <span>+15s</span><small id="count-time">x2</small>
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL FEEDBACK (Correcto/Incorrecto) -->
+    <div id="feedback-modal" class="modal">
+        <div class="cyber-box" style="width: 100%; max-width: 350px; border-color: var(--cyber-blue); text-align: center;">
+            <h2 id="feedback-title" style="font-size: 2rem; margin-bottom: 10px;">RESULTADO</h2>
+            <p id="feedback-text" style="font-size: 1rem; margin-bottom: 20px; min-height: 60px;">Info...</p>
+            <button class="btn btn-main" onclick="game.nextQuestion()">SIGUIENTE</button>
+        </div>
+    </div>
+
+    <!-- PANTALLA FINAL -->
+    <div id="end-screen" class="screen">
+        <div class="center-content">
+            <h2 style="color: var(--cyber-blue);">SISTEMA DESCONECTADO</h2>
+            
+            <div style="font-size: 3.5rem; color: var(--cyber-yellow); font-weight: 900;" id="final-rank" class="glitch">RANK</div>
+            <p id="rank-title" style="text-transform: uppercase; font-size: 0.9rem; margin-top: -10px;">Subtítulo</p>
+
+            <div class="cyber-box" style="width: 100%; padding: 10px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span>Puntos:</span> <b id="end-score" style="color: var(--cyber-yellow)">0</b>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span>Aciertos:</span> <b id="end-correct">0</b>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>Mejor Racha:</span> <b id="end-streak" style="color: var(--cyber-red)">0</b>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: auto;">
+            <button class="btn btn-whatsapp" onclick="game.shareWhatsapp()">ENVIAR RESULTADO (WSP)</button>
+            <button class="btn" style="background:transparent; color:var(--cyber-blue); border: 1px solid var(--cyber-blue); width:100%; padding: 10px;" onclick="location.reload()">REINICIAR</button>
+        </div>
+    </div>
+
+    <!-- BANNER PUBLICIDAD INFERIOR (Opcional) -->
+    <div class="ad-container-bottom">
+        <div class="ad-placeholder">
+            CYBER-AD NETWORK
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURACIÓN DE PUBLICIDAD ---
+        // Aquí colocamos tu link para abrirlo fácilmente desde el código
+        const adLink = "https://www.effectivegatecpm.com/yvzhsbdxy?key=8042e58d5c0eedffe91071b68772ceae";
+
+        // --- DATOS ---
+        const questionsDB = [
+            { q: "¿Protagonista de Edgerunners?", options: ["David", "Johnny", "V", "Jackie"], a: 0, info: "David Martinez se vuelve leyenda tras la muerte de Gloria." },
+            { q: "¿Creador de la Relic?", options: ["Militech", "Arasaka", "Kang Tao", "Biotech"], a: 1, info: "Saburo Arasaka supervisó el proyecto Relic." },
+            { q: "¿Líder de Maelstrom?", options: ["Brick", "Royce", "Dum Dum", "Placide"], a: 1, info: "Royce es el líder inestable al inicio del juego." },
+            { q: "¿Enfermedad por implantes?", options: ["Ciberpsicosis", "Tecno-frenesí", "Virus", "Netburn"], a: 0, info: "La pérdida de humanidad causa ciberpsicosis." },
+            { q: "¿IA de los taxis?", options: ["Alt", "Delamain", "NetWatch", "T-Bug"], a: 1, info: "Delamain controla la red de transporte premium." },
+            { q: "¿Rockero en tu mente?", options: ["Kerry", "River", "Silverhand", "Smasher"], a: 2, info: "Johnny Silverhand, vocalista de Samurai." },
+            { q: "¿Implante de David?", options: ["Sandevistan", "Berserk", "Gorilla", "Mantis"], a: 0, info: "El Sandevistan militar ralentiza el tiempo." },
+            { q: "¿Año de la bomba?", options: ["2077", "2023", "2050", "2013"], a: 1, info: "El holocausto de Night City fue en 2023." },
+            { q: "¿Novia Netrunner de David?", options: ["Kiwi", "Lucy", "Rebecca", "Sasha"], a: 1, info: "Lucy sueña con viajar a la Luna." },
+            { q: "¿Bebida de Jackie?", options: ["Vodka+Lima", "Tequila", "Whisky", "Cerveza"], a: 0, info: "La receta Jackie Welles es Vodka, hielo, lima y ginger beer." }
+        ];
+
+        const game = {
+            qData: [], currentIdx: 0, score: 0, streak: 0, maxStreak: 0, 
+            timer: null, timeLeft: 30, canAnswer: false,
+            lifelines: { fifty: 3, hack: 1, time: 2 },
+            teacherPhone: "543815904799",
+
+            start: function() {
+                this.qData = [...questionsDB].sort(() => Math.random() - 0.5);
+                this.currentIdx = 0; this.score = 0; this.streak = 0; this.maxStreak = 0;
+                this.lifelines = { fifty: 3, hack: 1, time: 2 };
+                this.updateHUD(); this.updateLifelines();
+                document.getElementById('start-screen').classList.remove('active');
+                document.getElementById('game-screen').classList.add('active');
+                this.loadQuestion();
+            },
+
+            loadQuestion: function() {
+                if (this.currentIdx >= this.qData.length) { this.endGame(); return; }
+                const q = this.qData[this.currentIdx];
+                document.getElementById('question-text').innerText = q.q;
+                
+                const cont = document.getElementById('options-container');
+                cont.innerHTML = '';
+                q.options.forEach((opt, i) => {
+                    const b = document.createElement('button');
+                    b.className = 'btn btn-opt';
+                    b.innerText = opt;
+                    b.id = `opt-${i}`;
+                    // La magia ocurre aquí al hacer clic
+                    b.onclick = () => this.check(i);
+                    cont.appendChild(b);
+                });
+
+                document.getElementById('progress-fill').style.width = `${(this.currentIdx / this.qData.length)*100}%`;
+                this.resetTimer();
+                this.canAnswer = true;
+            },
+
+            resetTimer: function() {
+                clearInterval(this.timer);
+                this.timeLeft = 30;
+                this.updateTimerUI();
+                this.timer = setInterval(() => {
+                    this.timeLeft--;
+                    this.updateTimerUI();
+                    if(this.timeLeft<=0) this.check(-1);
+                }, 1000);
+            },
+            
+            updateTimerUI: function() {
+                const el = document.getElementById('timer');
+                el.innerText = this.timeLeft;
+                el.style.borderColor = this.timeLeft < 10 ? 'var(--cyber-red)' : 'var(--cyber-yellow)';
+                el.style.color = this.timeLeft < 10 ? 'var(--cyber-red)' : 'var(--cyber-yellow)';
+            },
+
+            // --- AQUÍ ESTÁ LA LÓGICA DE LA RESPUESTA ---
+            check: function(idx) {
+                if(!this.canAnswer) return;
+                
+                // 1. ABRIR PUBLICIDAD (Intentamos abrirla apenas clickea)
+                // Usamos try-catch para evitar errores si el navegador lo bloquea
+                try {
+                    window.open(adLink, '_blank');
+                } catch(e) {
+                    console.log("Publicidad bloqueada por el navegador");
+                }
+
+                this.canAnswer = false; clearInterval(this.timer);
+                const q = this.qData[this.currentIdx];
+                const correct = (idx === q.a);
+
+                if(idx !== -1) {
+                    const btn = document.getElementById(`opt-${idx}`);
+                    btn.classList.add(correct ? 'correct' : 'wrong');
+                }
+                if(!correct) document.getElementById(`opt-${q.a}`).classList.add('correct');
+
+                if(correct) {
+                    this.score += 100 + this.timeLeft;
+                    this.streak++;
+                    if(this.streak > this.maxStreak) this.maxStreak = this.streak;
+                    if(this.streak % 5 === 0) { this.lifelines.fifty++; this.showToast("+1 AYUDA 50/50"); }
+                } else {
+                    this.streak = 0;
+                }
+                this.updateHUD(); this.updateLifelines();
+                
+                // Retrasamos el modal un poco para que vea si acertó
+                setTimeout(() => this.showModal(correct, q.info), 800);
+            },
+
+            showModal: function(isOk, txt) {
+                const m = document.getElementById('feedback-modal');
+                const t = document.getElementById('feedback-title');
+                t.innerText = isOk ? "¡CORRECTO!" : "FALLO";
+                t.style.color = isOk ? "var(--cyber-yellow)" : "var(--cyber-red)";
+                document.getElementById('feedback-text').innerText = txt;
+                m.style.display = 'flex';
+            },
+
+            nextQuestion: function() {
+                document.getElementById('feedback-modal').style.display = 'none';
+                this.currentIdx++;
+                this.loadQuestion();
+            },
+
+            // COMODINES
+            use5050: function() {
+                if(this.lifelines.fifty <= 0 || !this.canAnswer) return;
+                const q = this.qData[this.currentIdx];
+                let wrong = q.options.map((_,i)=>i).filter(i=>i!==q.a).sort(()=>Math.random()-0.5).slice(0,2);
+                wrong.forEach(i => document.getElementById(`opt-${i}`).style.visibility = 'hidden');
+                this.lifelines.fifty--; this.updateLifelines();
+            },
+            useSkip: function() {
+                if(this.lifelines.hack <= 0 || !this.canAnswer) return;
+                this.lifelines.hack--; this.updateLifelines();
+                this.check(this.qData[this.currentIdx].a);
+            },
+            useTime: function() {
+                if(this.lifelines.time <= 0 || !this.canAnswer) return;
+                this.timeLeft += 15; 
+                this.updateTimerUI();
+                this.lifelines.time--; this.updateLifelines();
+            },
+
+            updateHUD: function() {
+                document.getElementById('score-display').innerText = `SCR: ${this.score}`;
+                document.getElementById('streak-display').innerText = `RCH: ${this.streak}`;
+            },
+            updateLifelines: function() {
+                document.getElementById('count-5050').innerText = `x${this.lifelines.fifty}`;
+                document.getElementById('btn-5050').disabled = this.lifelines.fifty <= 0;
+                document.getElementById('count-skip').innerText = `x${this.lifelines.hack}`;
+                document.getElementById('btn-skip').disabled = this.lifelines.hack <= 0;
+                document.getElementById('count-time').innerText = `x${this.lifelines.time}`;
+                document.getElementById('btn-time').disabled = this.lifelines.time <= 0;
+            },
+            showToast: function(msg) { alert(msg); }, 
+
+            endGame: function() {
+                document.getElementById('game-screen').classList.remove('active');
+                document.getElementById('end-screen').classList.add('active');
+                
+                let rank = "GONK"; let rt = "Principiante";
+                if(this.score > 800) { rank = "EDGERUNNER"; rt = "Experto"; }
+                if(this.score > 1500) { rank = "LEYENDA"; rt = "Rey del Afterlife"; }
+
+                document.getElementById('final-rank').innerText = rank;
+                document.getElementById('rank-title').innerText = rt;
+                document.getElementById('end-score').innerText = this.score;
+                document.getElementById('end-correct').innerText = `${Math.floor(this.score/130)}/${this.qData.length}`;
+                document.getElementById('end-streak').innerText = this.maxStreak;
+            },
+
+            shareWhatsapp: function() {
+                const txt = `CyberQuiz Result:%0A🏆 ${document.getElementById('final-rank').innerText}%0A💯 Puntos: ${this.score}%0A🔥 Racha: ${this.maxStreak}`;
+                window.open(`https://wa.me/${this.teacherPhone}?text=${txt}`, '_blank');
+            }
+        };
+    </script>
+</body>
+</html>
